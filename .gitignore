@@ -1,0 +1,10 @@
+.DS_Store
+**/node_modules/
+**/.preview/
+**/.env
+**/.env.*
+!**/.env.example
+vintage-lace-demo/dist/
+output/
+**/*.tar.gz
+**/*.log

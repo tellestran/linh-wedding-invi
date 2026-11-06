@@ -1,0 +1,16 @@
+import { readFile, writeFile, mkdir, rm, readdir, copyFile } from 'node:fs/promises';
+import { resolve, extname } from 'node:path';
+const root = resolve(import.meta.dirname, '..');
+const assets = {};
+const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.png':'image/png', '.jpg':'image/jpeg', '.svg':'image/svg+xml', '.webp':'image/webp' };
+const files = ['index.html', 'styles.css', 'script.js', ...(await readdir(resolve(root, 'assets'))).filter(file => types[extname(file)]).map(file => `assets/${file}`)];
+for (const file of files) assets[`/${file}`] = { type: types[extname(file)], data: (await readFile(resolve(root, file))).toString('base64') };
+const source = (await readFile(resolve(root, 'worker/index.js'), 'utf8')).replace('/* SITE_ASSETS */ {}', JSON.stringify(assets));
+await rm(resolve(root, 'dist'), { recursive: true, force: true });
+await mkdir(resolve(root, 'dist/server'), { recursive: true });
+await mkdir(resolve(root, 'dist/.openai'), { recursive: true });
+await writeFile(resolve(root, 'dist/server/index.js'), source);
+await copyFile(resolve(root, '.openai/hosting.json'), resolve(root, 'dist/.openai/hosting.json'));
+const worker = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+if (typeof worker.default?.fetch !== 'function') throw new Error('Worker must export fetch');
+console.log(`Built Worker with ${files.length} local assets (${(Buffer.byteLength(source)/1024/1024).toFixed(1)} MB).`);

@@ -1,0 +1,11 @@
+{
+  "name": "linh-tuan-vintage-lace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/preview.mjs",
+    "check": "node --check script.js && node --check worker/index.js",
+    "test": "node --test scripts/rsvp.test.mjs"
+  }
+}
