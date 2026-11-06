@@ -219,7 +219,6 @@ function showPhoto(index) {
   const image = button.querySelector('img');
   photoDialog.querySelector('img').src = button.dataset.photo;
   photoDialog.querySelector('img').alt = image.alt;
-  document.querySelector('#photo-caption').textContent = image.alt;
   document.querySelector('#photo-count').textContent = `${String(photoIndex + 1).padStart(2, '0')} / ${galleryButtons.length}`;
 }
 galleryButtons.forEach((button, index) => button.addEventListener('click', () => {
