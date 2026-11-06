@@ -18,7 +18,7 @@ npm run dev
 
 The default local preview is `http://127.0.0.1:5500`.
 
-For guest name lookup through `?id=1`, follow [Apps Script setup](vintage-lace-demo/integrations/google-apps-script/README.md). Configure server secrets through environment variables. RSVP storage currently uses Cloudflare D1.
+For guest name lookup through `?id=1`, follow [Apps Script setup](vintage-lace-demo/integrations/google-apps-script/README.md). Configure server secrets through environment variables. On Vercel and configured local preview, RSVP and wishes are saved to Google Sheets. See [Vercel setup](vintage-lace-demo/VERCEL.md).
 
 `wedding-invitation/` contains the earlier invitation. Its `dist/` directory is the editable source for that version and is tracked intentionally.
 

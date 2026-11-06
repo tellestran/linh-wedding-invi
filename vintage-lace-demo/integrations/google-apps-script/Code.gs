@@ -1,5 +1,5 @@
 function doGet() {
-  return output_({ ok: true, service: 'wedding-sheet', version: 1 });
+  return output_({ ok: true, service: 'wedding-sheet', version: 2 });
 }
 
 function doPost(e) {
@@ -18,18 +18,18 @@ function doPost(e) {
     }
     if (!['guest', 'rsvp'].includes(body.action)) return output_({ ok: false, error: 'invalid_action' });
     const guestId = String(body.guest_id || '').trim();
-    if (!/^[1-9][0-9]{0,8}$/.test(guestId)) return output_({ ok: false, error: 'invalid_guest_id' });
+    if ((body.action === 'guest' || body.guest_id !== undefined) && !/^[1-9][0-9]{0,8}$/.test(guestId)) return output_({ ok: false, error: 'invalid_guest_id' });
     const book = SpreadsheetApp.openById(spreadsheetId);
     const guestSheet = sheet_(book, 'KhachMoi', ['id', 'Tên']);
     const matches = rows_(guestSheet, 2).filter(row => row[0].trim() === guestId);
-    if (matches.length !== 1 || !matches[0][1].trim()) {
+    if (guestId && (matches.length !== 1 || !matches[0][1].trim())) {
       return output_({ ok: false, error: matches.length > 1 ? 'duplicate_guest_id' : 'guest_not_found' });
     }
-    const invitedName = matches[0][1].trim();
+    const invitedName = guestId ? matches[0][1].trim() : '';
     if (body.action === 'guest') return output_({ ok: true, name: invitedName });
 
     const id = typeof body.id === 'string' ? body.id : '';
-    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const name = invitedName || (typeof body.name === 'string' ? body.name.trim() : '');
     const note = typeof body.note === 'string' ? body.note.trim() : '';
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
         || !name || name.length > 60 || note.length > 2000
@@ -44,7 +44,7 @@ function doPost(e) {
     if (!lock.tryLock(3000)) return output_({ ok: false, error: 'busy_retry' });
     try {
       const existing = rows_(responses, 6);
-      const matchingRows = existing.map((row, index) => ({ row, index })).filter(item => item.row[0].trim() === guestId);
+      const matchingRows = existing.map((row, index) => ({ row, index })).filter(item => guestId ? item.row[0].trim() === guestId : item.row[5] === id && !item.row[0].trim());
       if (matchingRows.length > 1) return output_({ ok: false, error: 'duplicate_response' });
       const previous = matchingRows[0];
       const reusedId = existing.find(row => row[5] === id && row[0].trim() !== guestId);
@@ -55,12 +55,12 @@ function doPost(e) {
       if (wish && wish[1].trim() !== guestId) return output_({ ok: false, error: 'submission_conflict' });
       if (note && !wish) {
         wishes.getRange(wishes.getLastRow() + 1, 1, 1, 5).setValues([
-          [id, Number(guestId), literal_(name), literal_(note), timestamp]
+          [id, (guestId ? Number(guestId) : ''), literal_(name), literal_(note), timestamp]
         ]);
         SpreadsheetApp.flush();
       }
       responses.getRange(previous ? previous.index + 2 : responses.getLastRow() + 1, 1, 1, 6).setValues([
-        [Number(guestId), literal_(name), body.attendance, body.guests, timestamp, id]
+        [(guestId ? Number(guestId) : ''), literal_(name), body.attendance, body.guests, timestamp, id]
       ]);
       SpreadsheetApp.flush();
       return output_({ ok: true });

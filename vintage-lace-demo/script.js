@@ -148,12 +148,12 @@ async function resolveGuest() {
   if (ids.length !== 1 || !/^[1-9][0-9]{0,8}$/.test(id)) return;
   try {
     const response = await fetch(`/api/guest?id=${encodeURIComponent(id)}`, {
-      cache: 'no-store', signal: AbortSignal.timeout(7000)
+      cache: 'no-store', signal: AbortSignal.timeout(14000)
     });
     if (!response.ok) return;
     const data = await response.json();
     if (typeof data.name !== 'string' || !data.name.trim() || data.name.trim().length > 60) return;
-    if (!submitted && !submitButton.disabled) updateGuestName(data.name.trim());
+    updateGuestName(data.name.trim());
   } catch {}
 }
 resolveGuest();
@@ -175,6 +175,14 @@ form.addEventListener('submit', async event => {
   if (submitButton.disabled) return;
   const name = recipient;
   const response = { id: submissionId, name, attendance: form.elements.attendance.value, guests: form.elements.attendance.value === 'no' ? 0 : Number(form.elements.guests.value), note: form.elements.note.value.trim() };
+  if (guestQuery.has('id')) {
+    const ids = guestQuery.getAll('id');
+    if (ids.length !== 1 || !/^[1-9][0-9]{0,8}$/.test(ids[0].trim())) {
+      status.textContent = 'Mã khách mời không hợp lệ. Vui lòng kiểm tra đường dẫn thiệp.';
+      return;
+    }
+    response.guest_id = ids[0].trim();
+  }
   submitButton.disabled = true;
   form.setAttribute('aria-busy', 'true');
   [...form.elements].filter(control => control.matches('input, select, textarea')).forEach(control => { control.disabled = true; });
@@ -183,18 +191,17 @@ form.addEventListener('submit', async event => {
   try {
     const result = await fetch('/api/rsvp', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(response), signal: AbortSignal.timeout(15000)
+      body: JSON.stringify(response), signal: AbortSignal.timeout(20000)
     });
     const data = await result.json();
     if (!result.ok || !data.ok) throw new Error(data.error || 'Chưa thể gửi xác nhận. Vui lòng thử lại.');
     submitted = true;
     submitButton.querySelector('span').textContent = 'Đã gửi xác nhận';
     status.textContent = 'Cảm ơn bạn! Phản hồi của bạn đã được gửi thành công.';
-    updateGuestName(name);
   } catch (error) {
     submitButton.disabled = false;
     submitButton.querySelector('span').textContent = 'Gửi xác nhận';
-    status.textContent = error.name === 'TimeoutError' ? 'Kết nối hơi chậm. Vui lòng thử gửi lại.' : 'Chưa gửi được phản hồi. Vui lòng kiểm tra kết nối và thử lại.';
+    status.textContent = error.name === 'TimeoutError' ? 'Kết nối hơi chậm. Vui lòng thử gửi lại.' : (error.message || 'Chưa gửi được phản hồi. Vui lòng thử lại.');
   } finally {
     form.removeAttribute('aria-busy');
     [...form.elements].filter(control => control.matches('input, select, textarea')).forEach(control => { control.disabled = false; });

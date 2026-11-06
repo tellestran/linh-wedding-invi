@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/preview.mjs",
-    "check": "node --check script.js && node --check worker/index.js",
-    "test": "node --test scripts/rsvp.test.mjs"
+    "check": "node --check script.js && node --check worker/index.js && node --check api/guest.js && node --check api/rsvp.js",
+    "test": "node --test scripts/*.test.mjs",
+    "build:vercel": "node scripts/build-vercel.mjs"
   }
 }

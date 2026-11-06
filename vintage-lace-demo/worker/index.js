@@ -4,6 +4,32 @@ function json(data, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 }
 
+async function callSheet(payload, env) {
+  const endpoint = new URL(env.GUEST_LOOKUP_URL);
+  if (endpoint.protocol !== 'https:' || endpoint.hostname !== 'script.google.com'
+      || !/^\/macros\/s\/[^/]+\/exec$/.test(endpoint.pathname)) throw new Error('Invalid endpoint');
+  const response = await fetch(endpoint, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...payload, secret: env.GUEST_LOOKUP_SECRET }),
+    redirect: 'follow', signal: AbortSignal.timeout(12000)
+  });
+  if (!response.ok) throw new Error('Upstream failed');
+  const reader = response.body.getReader();
+  const chunks = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > 16000) { await reader.cancel(); throw new Error('Response too large'); }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
 export async function receiveGuest(request, env) {
   if (request.method !== 'GET') return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET' } });
   const ids = new URL(request.url).searchParams.getAll('id');
@@ -11,29 +37,7 @@ export async function receiveGuest(request, env) {
   if (ids.length !== 1 || !/^[1-9][0-9]{0,8}$/.test(id || '')) return json({ error: 'invalid_id' }, 400);
   if (!env.GUEST_LOOKUP_URL || !env.GUEST_LOOKUP_SECRET) return json({ error: 'guest_lookup_unavailable' }, 503);
   try {
-    const endpoint = new URL(env.GUEST_LOOKUP_URL);
-    if (endpoint.protocol !== 'https:' || endpoint.hostname !== 'script.google.com'
-        || !/^\/macros\/s\/[^/]+\/exec$/.test(endpoint.pathname)) throw new Error('Invalid endpoint');
-    const response = await fetch(endpoint, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'guest', guest_id: id, secret: env.GUEST_LOOKUP_SECRET }),
-      redirect: 'follow', signal: AbortSignal.timeout(5000)
-    });
-    if (!response.ok) throw new Error('Upstream failed');
-    const reader = response.body.getReader();
-    const chunks = [];
-    let size = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > 16000) { await reader.cancel(); throw new Error('Response too large'); }
-      chunks.push(value);
-    }
-    const bytes = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
-    const data = JSON.parse(new TextDecoder().decode(bytes));
+    const data = await callSheet({ action: 'guest', guest_id: id }, env);
     if (data?.ok === false && data.error === 'guest_not_found') return json({ error: 'guest_not_found' }, 404);
     if (data?.ok !== true || typeof data.name !== 'string' || !data.name.trim() || data.name.trim().length > 60) {
       throw new Error('Invalid upstream response');
@@ -42,7 +46,7 @@ export async function receiveGuest(request, env) {
   } catch { return json({ error: 'guest_lookup_unavailable' }, 503); }
 }
 
-async function receiveRsvp(request, env) {
+export async function receiveRsvp(request, env) {
   if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: { Allow: 'POST' } });
   const origin = request.headers.get('Origin');
   if (origin && origin !== new URL(request.url).origin) return json({ error: 'Yêu cầu không hợp lệ.' }, 403);
@@ -63,6 +67,27 @@ async function receiveRsvp(request, env) {
       || !['both', 'party', 'ceremony', 'no'].includes(attendance)
       || !Number.isInteger(guests) || (attendance === 'no' ? guests !== 0 : guests < 1 || guests > 5)) {
     return json({ error: 'Vui lòng kiểm tra tên và thông tin tham dự.' }, 400);
+  }
+  if (env.RSVP_STORAGE === 'sheets' || env.GUEST_LOOKUP_URL || env.GUEST_LOOKUP_SECRET) {
+    const guestId = body.guest_id;
+    if (guestId !== undefined && (typeof guestId !== 'string' || !/^[1-9][0-9]{0,8}$/.test(guestId))) {
+      return json({ error: 'Mã khách mời không hợp lệ.' }, 400);
+    }
+    if (!env.GUEST_LOOKUP_URL || !env.GUEST_LOOKUP_SECRET) {
+      return json({ error: 'Chưa thể nhận xác nhận. Vui lòng thử lại sau.' }, 503);
+    }
+    try {
+      const result = await callSheet({ action: 'rsvp', id, guest_id: guestId, name, attendance, guests, note }, env);
+      if (result?.ok !== true) {
+        if (['guest_not_found', 'invalid_guest_id'].includes(result?.error)) {
+          return json({ error: 'Không tìm thấy khách mời. Vui lòng kiểm tra đường dẫn thiệp.' }, 400);
+        }
+        throw new Error('Sheet did not confirm the write');
+      }
+      return json({ ok: true });
+    } catch {
+      return json({ error: 'Chưa nhận được xác nhận. Vui lòng thử gửi lại.' }, 503);
+    }
   }
   if (!env.DB) return json({ error: 'Chưa thể nhận xác nhận. Vui lòng thử lại sau.' }, 503);
   try {

@@ -35,7 +35,7 @@ Tên khách lấy từ `?khach=Anh%20Nam` hoặc `?guest=Anh%20Nam`; mặc đị
 
 ## RSVP
 
-POST JSON tới `/api/rsvp`, API kiểm tra và ghi vào D1 `rsvps`. Chỉ báo thành công sau khi máy chủ nhận. Không tự gửi email/SMS. Mỗi phản hồi gồm `id`, `name`, `attendance` (`both`, `party`, `ceremony`, `no`), `guests` (0 khi vắng mặt, 1–5 khi tham dự; 5 là từ 5 người), `note`, `created_at`. UUID giúp thử lại sau lỗi mạng không tạo bản trùng. Không có API public để liệt kê phản hồi; chủ site có thể yêu cầu Codex đọc qua Sites, binding `DB`, bảng `rsvps`.
+POST JSON tới `/api/rsvp`; trên Vercel hoặc local có cấu hình Apps Script, API ghi phản hồi vào `PhanHoi` và lời chúc vào `LoiChuc` của Google Sheets. Chỉ báo thành công sau khi máy chủ nhận. Không tự gửi email/SMS. Mỗi phản hồi gồm `id`, `name`, `attendance` (`both`, `party`, `ceremony`, `no`), `guests` (0 khi vắng mặt, 1–5 khi tham dự; 5 là từ 5 người), `note`, `created_at`. UUID giúp thử lại sau lỗi mạng không tạo bản trùng. Không có API public để liệt kê phản hồi; chủ site xem trực tiếp trong Google Sheets. Bản Worker cũ và preview chưa cấu hình Google vẫn hỗ trợ D1/SQLite.
 
 Backend và migration không đổi trong lần tích hợp phong bì/album này. Không sửa migration đã áp dụng; thêm migration mới nếu thay đổi schema.
 
@@ -56,4 +56,8 @@ Preview: http://127.0.0.1:5500/. Database preview trong `.preview/`, bị Git b�
 
 Đã mở phong bì có tên khách để vào đúng bìa, kiểm tra mở lại từ câu chuyện, đủ 4 ảnh slideshow, 5 ảnh chính và 7 ảnh carousel, ảnh tải thành công, carousel cuộn, viewer chuyển bằng nút/phím mũi tên và đóng bằng Escape. Đã xem desktop 1280px và mobile 390px; không tràn ngang. Đã bỏ asset và markup của khung ren xanh.
 
-Sáu kiểm thử API đã pass ở lần triển khai backend trước; backend không đổi. Không tạo RSVP kiểm thử trên production.
+12 kiểm thử API và Apps Script mô phỏng đã pass, gồm tra tên, lưu RSVP/lời chúc, gửi lại và lỗi upstream. Không tạo RSVP kiểm thử trên production.
+
+## Vercel + Google Sheets
+
+Follow [VERCEL.md](VERCEL.md) for guest ID lookup, RSVP, server environment variables, and deployment. The Vercel build is `npm run build:vercel`; the existing `npm run build` still produces the historical Worker build.
