@@ -7,7 +7,7 @@ Source độc lập với `../wedding-invitation`. Luồng khách: phong bì t�
 ## Các phần đã tích hợp từ handoff v29
 
 - Phong bì dùng đúng ảnh nền xanh viền ren chữ V và con dấu T&L. Tên khách ở nắp; chạm con dấu để nắp trượt lên, thân trượt xuống rồi vào bìa thư mời hiện tại. Khóa cuộn và tương tác với nội dung phía sau trong lúc phong bì đóng.
-- “Chuyện của chúng mình” là một section ảnh toàn màn hình trước album, thay cho caption ngắn trước đây. Bốn ảnh chuyển cảnh chéo trong chu kỳ 24 giây, chữ “Hai trái tim, một mái nhà” và nút “Xem lại phong bì”. Animation tạm dừng khi section ở ngoài màn hình; ưu tiên giảm chuyển động thì chỉ hiện một ảnh.
+- “Chuyện của chúng mình” là một section ảnh toàn màn hình trước album, thay cho caption ngắn trước đây. Bốn ảnh chuyển cảnh chéo trong chu kỳ 24 giây, chữ “To love and be loved” và nút “Xem lại phong bì”. Animation tạm dừng khi section ở ngoài màn hình; ưu tiên giảm chuyển động thì chỉ hiện một ảnh.
 - Chỉ lấy hai phần này từ `Main.dc_1.html` và `wedding-invitation-handoff_1.md`; lịch, lời mời, RSVP và thông tin mừng cưới tiếp tục dùng nội dung hiện tại.
 
 ## Album 12 ảnh mới
