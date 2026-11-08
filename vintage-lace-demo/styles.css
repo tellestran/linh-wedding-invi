@@ -803,6 +803,8 @@ html.has-envelope, body.has-envelope, body.has-lightbox { overflow:hidden; }
 #photo-dialog { position:fixed; inset:0; width:100vw; height:100svh; max-width:none; max-height:none; margin:0; padding:55px 64px 60px; border:0; background:transparent; color:var(--ivory); }
 #photo-dialog[open] { display:grid; place-items:center; }
 #photo-dialog::backdrop { background:#152010f5; }
+#photo-dialog[open]::backdrop { animation:lightbox-backdrop-in .25s ease-out; }
+@keyframes lightbox-backdrop-in { from { opacity:0; } to { opacity:1; } }
 .lightbox-stage { margin:0; max-width:100%; display:flex; align-items:center; flex-direction:column; gap:14px; }
 .lightbox-stage img { display:block; width:auto; height:auto; max-width:calc(100vw - 128px); max-height:calc(100svh - 160px); object-fit:contain; touch-action:pan-y pinch-zoom; }
 #close-photo { position:absolute; z-index:2; right:20px; top:12px; width:48px; height:48px; border:0; background:none; color:inherit; font-size:37px; }

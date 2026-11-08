@@ -263,15 +263,47 @@ form.addEventListener('submit', async event => {
 
 const photoDialog = document.querySelector('#photo-dialog');
 const galleryButtons = [...document.querySelectorAll('[data-photo]')];
+const viewerImage = photoDialog.querySelector('img');
 let activePhoto;
 let photoIndex = 0;
-function showPhoto(index) {
+let photoRequest = 0;
+let photoAnimation;
+async function showPhoto(index, direction = 0) {
   photoIndex = (index + galleryButtons.length) % galleryButtons.length;
-  const button = galleryButtons[photoIndex];
+  const nextIndex = photoIndex;
+  const request = ++photoRequest;
+  const button = galleryButtons[nextIndex];
   const image = button.querySelector('img');
-  photoDialog.querySelector('img').src = button.dataset.photo;
-  photoDialog.querySelector('img').alt = image.alt;
-  document.querySelector('#photo-count').textContent = `${String(photoIndex + 1).padStart(2, '0')} / ${galleryButtons.length}`;
+  photoAnimation?.cancel();
+  if (direction === 0 || reducedMotion.matches) {
+    viewerImage.src = button.dataset.photo;
+    viewerImage.alt = image.alt;
+    document.querySelector('#photo-count').textContent = `${String(nextIndex + 1).padStart(2, '0')} / ${galleryButtons.length}`;
+  }
+  const nextImage = new Image();
+  nextImage.src = button.dataset.photo;
+  try { await nextImage.decode(); }
+  catch {
+    if (request === photoRequest && photoDialog.open) showToast('Chưa tải được ảnh. Vui lòng thử lại.');
+    return;
+  }
+  if (request !== photoRequest || !photoDialog.open || reducedMotion.matches) return;
+  if (direction !== 0) {
+    photoAnimation = viewerImage.animate([
+      { opacity: 1, transform: 'translateX(0)' },
+      { opacity: 0, transform: `translateX(${-direction * 18}px)` }
+    ], { duration: 110, easing: 'ease-in', fill: 'forwards' });
+    try { await photoAnimation.finished; } catch { return; }
+    if (request !== photoRequest || !photoDialog.open) return;
+    viewerImage.src = button.dataset.photo;
+    viewerImage.alt = image.alt;
+    document.querySelector('#photo-count').textContent = `${String(nextIndex + 1).padStart(2, '0')} / ${galleryButtons.length}`;
+    photoAnimation.cancel();
+  }
+  photoAnimation = viewerImage.animate([
+    { opacity: 0, transform: direction === 0 ? 'scale(.97)' : `translateX(${direction * 24}px)` },
+    { opacity: 1, transform: 'translateX(0) scale(1)' }
+  ], { duration: 280, easing: 'cubic-bezier(.2,.7,.2,1)' });
 }
 galleryButtons.forEach((button, index) => button.addEventListener('click', () => {
   activePhoto = button;
@@ -280,17 +312,20 @@ galleryButtons.forEach((button, index) => button.addEventListener('click', () =>
   photoDialog.showModal();
 }));
 document.querySelector('#close-photo').addEventListener('click', () => photoDialog.close());
-document.querySelector('#photo-prev').addEventListener('click', () => showPhoto(photoIndex - 1));
-document.querySelector('#photo-next').addEventListener('click', () => showPhoto(photoIndex + 1));
+document.querySelector('#photo-prev').addEventListener('click', () => showPhoto(photoIndex - 1, -1));
+document.querySelector('#photo-next').addEventListener('click', () => showPhoto(photoIndex + 1, 1));
 photoDialog.addEventListener('click', event => { if (event.target === photoDialog) photoDialog.close(); });
 photoDialog.addEventListener('close', () => {
+  photoRequest++;
+  photoAnimation?.cancel();
   document.body.classList.remove('has-lightbox');
   activePhoto?.focus();
 });
 photoDialog.addEventListener('keydown', event => {
   if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
     event.preventDefault();
-    showPhoto(photoIndex + (event.key === 'ArrowRight' ? 1 : -1));
+    const direction = event.key === 'ArrowRight' ? 1 : -1;
+    showPhoto(photoIndex + direction, direction);
   }
 });
 let touchStart;
@@ -302,7 +337,10 @@ photoDialog.addEventListener('touchend', event => {
   const dx = event.changedTouches[0].clientX - touchStart.x;
   const dy = event.changedTouches[0].clientY - touchStart.y;
   touchStart = null;
-  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) showPhoto(photoIndex + (dx < 0 ? 1 : -1));
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+    const direction = dx < 0 ? 1 : -1;
+    showPhoto(photoIndex + direction, direction);
+  }
 }, { passive: true });
 
 const carousel = document.querySelector('#album-carousel');
