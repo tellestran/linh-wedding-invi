@@ -607,6 +607,7 @@ h1 span {
 h1 { font-size: clamp(52px, 7.3vw, 88px); }
 h2 { font-family: var(--serif); font-size: 38px; font-weight: 400; line-height: 1.2; margin: 18px 0 24px; }
 .events { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 48px; }
+.events--groom { grid-template-columns: repeat(2, 1fr); }
 .event { padding: 12px 23px; }
 .event + .event { border-left: 1px solid #c5c6b7; }
 .event .eyebrow { font-size: 7px; letter-spacing: 1.6px; }

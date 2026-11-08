@@ -1,4 +1,35 @@
 'use strict';
+const guestQuery = new URLSearchParams(location.search);
+const isGroomInvitation = guestQuery.get('nhatrai') === 'true';
+
+if (isGroomInvitation) {
+  const partyEvent = document.querySelector('#party-event');
+  const ceremonyEvent = document.querySelector('#ceremony-event');
+  ceremonyEvent.appendChild(partyEvent.querySelector('.event-actions'));
+  partyEvent.remove();
+  document.querySelector('.events').classList.add('events--groom');
+  document.querySelectorAll('.event .eyebrow').forEach((label, index) => {
+    label.textContent = label.textContent.replace(/^\d+/, String(index + 1).padStart(2, '0'));
+  });
+  document.querySelectorAll('input[name="attendance"]').forEach(input => {
+    if (input.value === 'both' || input.value === 'party') input.closest('label').remove();
+  });
+  document.querySelector('input[name="attendance"][value="ceremony"]').checked = true;
+  document.querySelector('.rsvp-section .section-copy').textContent = 'Xin vui lòng xác nhận tham dự hôn lễ ngày 29 tháng 11 để gia đình chuẩn bị chu đáo.';
+  document.querySelector('.calendar-legend span').remove();
+  document.querySelector('meta[name="description"]').content = 'Thiệp cưới Thùy Linh & Đức Tuấn — 29.11.2026 tại Thanh Hóa và Hà Nội.';
+
+  const giftSection = document.querySelector('#mung-cuoi');
+  giftSection.querySelector('.section-copy').textContent = 'Nếu không thể đến chung vui, bạn có thể gửi lời chúc và quà mừng đến chú rể qua tài khoản dưới đây.';
+  giftSection.querySelector('.closing').textContent = 'Đức Tuấn';
+  const qr = giftSection.querySelector('.gift-qr');
+  qr.src = 'assets/gift-qr-groom.png';
+  qr.alt = 'Mã QR chuyển khoản mừng cưới của Đức Tuấn tại Techcombank';
+  giftSection.querySelector('.account-owner').textContent = 'TRAN DUC TUAN';
+  giftSection.querySelector('.account-number').textContent = '1903 6092 1560 15';
+  giftSection.querySelector('[data-copy]').dataset.copy = '19036092156015';
+}
+
 const wedding = { start: '2026-11-29T09:00:00+07:00' };
 const card = document.querySelector('#open-invitation');
 const invitation = document.querySelector('#invitation');
@@ -102,7 +133,7 @@ for (let week = 0; week < 6; week++) {
       const label = document.createElement('span');
       label.textContent = day;
       cell.appendChild(label);
-      if (day === 27 || day === 29) {
+      if ((day === 27 && !isGroomInvitation) || day === 29) {
         cell.className = day === 27 ? 'party-day' : 'wedding-day';
         cell.setAttribute('aria-label', `${day} tháng 11, ${day === 27 ? 'Tiệc chung vui' : 'Hôn lễ'}`);
       }
@@ -111,7 +142,6 @@ for (let week = 0; week < 6; week++) {
   }
   calendarBody.appendChild(row);
 }
-const guestQuery = new URLSearchParams(location.search);
 const guest = guestQuery.has('id') ? '' : guestQuery.get('khach') || guestQuery.get('guest');
 let recipient = guest?.trim().slice(0, 60) || 'Quý khách';
 updateGuestName(recipient);
