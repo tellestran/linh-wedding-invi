@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, rm, readdir, copyFile } from 'node:fs/promi
 import { resolve, extname } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const assets = {};
-const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.png':'image/png', '.jpg':'image/jpeg', '.svg':'image/svg+xml', '.webp':'image/webp' };
+const types = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.png':'image/png', '.jpg':'image/jpeg', '.svg':'image/svg+xml', '.webp':'image/webp', '.mp3':'audio/mpeg' };
 const files = ['index.html', 'styles.css', 'script.js', ...(await readdir(resolve(root, 'assets'))).filter(file => types[extname(file)]).map(file => `assets/${file}`)];
 for (const file of files) assets[`/${file}`] = { type: types[extname(file)], data: (await readFile(resolve(root, file))).toString('base64') };
 const source = (await readFile(resolve(root, 'worker/index.js'), 'utf8')).replace('/* SITE_ASSETS */ {}', JSON.stringify(assets));

@@ -37,6 +37,26 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const envelope = document.querySelector('#envelope-cover');
 const envelopeButton = document.querySelector('#open-envelope');
 const siteMain = document.querySelector('#site-main');
+
+const navbar = document.querySelector('.masthead');
+const darkSections = [document.querySelector('.hero'), document.querySelector('.story-band')];
+let navbarFrame;
+function updateNavbarTheme() {
+  navbarFrame = null;
+  const midpoint = navbar.getBoundingClientRect().height / 2;
+  const onDarkBackground = darkSections.some(section => {
+    const bounds = section.getBoundingClientRect();
+    return bounds.height > 0 && bounds.top <= midpoint && bounds.bottom > midpoint;
+  });
+  navbar.classList.toggle('is-light', !onDarkBackground);
+}
+function scheduleNavbarTheme() {
+  if (!navbarFrame) navbarFrame = requestAnimationFrame(updateNavbarTheme);
+}
+window.addEventListener('scroll', scheduleNavbarTheme, { passive: true });
+window.addEventListener('resize', scheduleNavbarTheme);
+updateNavbarTheme();
+
 let envelopeOpening = false;
 document.documentElement.classList.add('has-envelope');
 
@@ -85,42 +105,44 @@ function showToast(message) {
   toast.textContent = message; toast.classList.add('visible');
   clearTimeout(toastTimeout); toastTimeout = setTimeout(() => toast.classList.remove('visible'), 4000);
 }
-// Nhạc hộp nhạc tự tổng hợp bằng Web Audio; chỉ phát khi khách chủ động bật.
-let audioContext, musicTimer;
-let playing = false;
+const music = document.querySelector('#background-music');
 const soundButton = document.querySelector('.sound-toggle');
-const melody = [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880, 698.46, 659.25, 783.99, 987.77, 783.99, 587.33, 698.46, 783.99, 659.25];
-let note = 0;
-function playNote() {
-  const time = audioContext.currentTime;
-  const oscillator = audioContext.createOscillator();
-  const gain = audioContext.createGain();
-  oscillator.type = 'sine'; oscillator.frequency.value = melody[note++ % melody.length];
-  gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(.055, time + .025); gain.gain.exponentialRampToValueAtTime(.001, time + 1.9);
-  oscillator.connect(gain); gain.connect(audioContext.destination);
-  oscillator.start(time); oscillator.stop(time + 2);
-  oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+let musicEnabled = true;
+function updateMusicButton() {
+  soundButton.setAttribute('aria-pressed', String(musicEnabled));
+  soundButton.setAttribute('aria-label', musicEnabled ? 'Tắt nhạc nền' : 'Bật nhạc nền');
 }
-soundButton.addEventListener('click', async () => {
+async function startMusic() {
+  if (!musicEnabled || !music.paused) return;
   try {
-    if (playing) {
-      clearInterval(musicTimer); await audioContext.suspend(); playing = false;
-    } else {
-      const Audio = window.AudioContext || window.webkitAudioContext;
-      if (!Audio) throw new Error('Web Audio unavailable');
-      audioContext ||= new Audio(); await audioContext.resume();
-      playing = true; playNote(); musicTimer = setInterval(playNote, 650);
+    await music.play();
+  } catch (error) {
+    if (error.name !== 'NotAllowedError' && error.name !== 'AbortError') {
+      showToast('Chưa phát được nhạc nền. Vui lòng thử lại.');
     }
-    soundButton.setAttribute('aria-pressed', String(playing));
-    soundButton.setAttribute('aria-label', playing ? 'Tắt nhạc nền' : 'Bật nhạc nền');
-  } catch { showToast('Trình duyệt này chưa hỗ trợ nhạc nền.'); }
-});
-document.addEventListener('visibilitychange', async () => {
-  if (document.hidden && playing) {
-    clearInterval(musicTimer); await audioContext.suspend(); playing = false;
-    soundButton.setAttribute('aria-pressed', 'false'); soundButton.setAttribute('aria-label', 'Bật nhạc nền');
   }
+}
+music.addEventListener('play', () => {
+  if (!musicEnabled) music.pause();
 });
+music.addEventListener('error', () => {
+  music.pause();
+  musicEnabled = false;
+  updateMusicButton();
+  showToast('Chưa tải được nhạc nền. Vui lòng thử lại.');
+});
+soundButton.addEventListener('click', () => {
+  musicEnabled = !musicEnabled;
+  updateMusicButton();
+  if (musicEnabled) startMusic();
+  else music.pause();
+});
+// Trình duyệt chặn autoplay sẽ phát nhạc từ lần khách chạm mở phong bì.
+document.addEventListener('click', event => {
+  if (!event.target.closest('.sound-toggle')) startMusic();
+}, { capture: true });
+updateMusicButton();
+startMusic();
 
 // November 2026 begins on Sunday; dates are rendered in a Monday-first table.
 const calendarBody = document.querySelector('#calendar-days');
